@@ -12,21 +12,121 @@ import { LoginModal } from './components/LoginModal';
 import { Movie, UserProfile } from './types';
 import { MOVIES_DATABASE, CURRENT_USER, MOCK_USERS_DATABASE } from './data/movies';
 
+const STORAGE_KEY_MOVIES = 'whoosh_movies_library_v1';
+const STORAGE_KEY_WATCHLIST = 'whoosh_watchlist_v1';
+const STORAGE_KEY_USER = 'whoosh_current_user_v1';
+const STORAGE_KEY_ALL_USERS = 'whoosh_all_users_v1';
+
 export function App() {
   const [currentTab, setCurrentTab] = useState<'home' | 'search' | 'watchlist' | 'profile'>('home');
-  const [movies, setMovies] = useState<Movie[]>(MOVIES_DATABASE);
+  
+  // Persistent Movies Catalog
+  const [movies, setMovies] = useState<Movie[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_MOVIES);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load movies from localStorage', e);
+    }
+    return MOVIES_DATABASE;
+  });
+
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
-  const [watchlist, setWatchlist] = useState<string[]>([
-    'interstellar-voyage',
-    'the-cipher-protocol',
-    'neon-resonance',
-  ]);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>(MOCK_USERS_DATABASE);
-  const [user, setUser] = useState<UserProfile>(CURRENT_USER);
+
+  // Persistent Watchlist
+  const [watchlist, setWatchlist] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WATCHLIST);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load watchlist from localStorage', e);
+    }
+    return [
+      'interstellar-voyage',
+      'the-cipher-protocol',
+      'neon-resonance',
+    ];
+  });
+
+  // Persistent All Users
+  const [allUsers, setAllUsers] = useState<UserProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_ALL_USERS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load users from localStorage', e);
+    }
+    return MOCK_USERS_DATABASE;
+  });
+
+  // Persistent Current Active User
+  const [user, setUser] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_USER);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load user profile from localStorage', e);
+    }
+    return CURRENT_USER;
+  });
+
   const [adminOpen, setAdminOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Synchronize state changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_MOVIES, JSON.stringify(movies));
+    } catch (e) {
+      console.error('Failed to persist movies to localStorage', e);
+    }
+  }, [movies]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_WATCHLIST, JSON.stringify(watchlist));
+    } catch (e) {
+      console.error('Failed to persist watchlist to localStorage', e);
+    }
+  }, [watchlist]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+    } catch (e) {
+      console.error('Failed to persist user profile to localStorage', e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_ALL_USERS, JSON.stringify(allUsers));
+    } catch (e) {
+      console.error('Failed to persist users database to localStorage', e);
+    }
+  }, [allUsers]);
 
   // Global Secluded Admin Shortcut: Ctrl+Shift+A or Cmd+Shift+A
   useEffect(() => {
@@ -78,6 +178,14 @@ export function App() {
     );
     const target = movies.find((m) => m.id === movieId);
     showToast(`Toggled feature spotlight for "${target?.title}"`);
+  };
+
+  const handleResetDefaultCatalog = () => {
+    setMovies(MOVIES_DATABASE);
+    try {
+      localStorage.setItem(STORAGE_KEY_MOVIES, JSON.stringify(MOVIES_DATABASE));
+    } catch (e) {}
+    showToast('Restored default master movie catalog');
   };
 
   const handleUpdateMovie = (updatedMovie: Movie) => {
@@ -304,6 +412,7 @@ export function App() {
         onUpdateMovie={handleUpdateMovie}
         onDeleteMovie={handleDeleteMovie}
         onToggleFeatureMovie={handleToggleFeatureMovie}
+        onResetDefaultCatalog={handleResetDefaultCatalog}
         onSelectMovie={handleSelectMovie}
         onPlayMovie={handlePlayMovie}
         onShowToast={showToast}
