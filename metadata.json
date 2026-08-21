@@ -1,0 +1,6 @@
+{
+  "name": "Whoosh Streaming",
+  "description": "A high-performance, cinematic movie streaming platform with immersive discovery, adaptive playback, watchlist, and personalized catalogs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
